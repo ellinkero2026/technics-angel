@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Technics Angel">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet"><title>Technics Rack</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;user-select:none}
+html,body{height:100%;background:#050505;font-family:Arial,Helvetica,sans-serif;color:#bbb;overflow:hidden}
+.rack{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:5px;padding:6px;background:#111}
+.mod{position:relative;border-radius:3px;padding:6px 10px;display:flex;gap:10px;align-items:center;min-height:0;
+ background:linear-gradient(#2b2b2d,#121214 45%,#0b0b0c);box-shadow:inset 0 1px 0 #555,0 2px 4px #000}
+.mod.silver{background:linear-gradient(#6a6558,#3d3a33 50%,#2a2823)}
+.logo{position:absolute;left:12px;top:3px;font:italic bold 10px Arial;color:#ddd;letter-spacing:1px}
+.model{position:absolute;right:14px;top:4px;font-size:7px;color:#888}
+.lcd{background:#02060a;border:2px solid #000;border-radius:2px;box-shadow:inset 0 0 8px #000,0 1px 0 #444;position:relative}
+canvas{display:block;width:100%;height:100%}
+.cy{color:#5df;text-shadow:0 0 6px #19f;font-family:'VT323','Courier New',monospace;letter-spacing:2px}
+.btn{background:linear-gradient(#444,#1a1a1a);border:1px solid #000;border-radius:2px;color:#ccc;font-size:9px;padding:0;cursor:pointer;
+ box-shadow:inset 0 1px 0 #777;height:22px;min-width:30px;flex:1}
+.btn:active,.btn.on{background:linear-gradient(#111,#2a2a2a);box-shadow:inset 0 3px 6px #000,inset 0 0 0 1px #000!important;transform:translateY(1px);color:#fff;text-shadow:0 0 5px #5df}
+.off .cy,.off canvas{opacity:.08;text-shadow:none}
+.off button:not(#pw){opacity:.3}
+.led{width:6px;height:6px;border-radius:50%;background:#400;box-shadow:0 0 0 1px #000}
+.led.on{background:#f22;box-shadow:0 0 6px #f22}.led.g.on{background:#3f5;box-shadow:0 0 6px #3f5}
+.knob{width:62px;height:62px;border-radius:50%;flex:none;position:relative;cursor:ns-resize;
+ background:radial-gradient(circle at 35% 30%,#555,#161616 70%);box-shadow:0 3px 8px #000,inset 0 0 0 3px #222,inset 0 0 0 4px #444}
+.knob i{position:absolute;left:50%;top:6px;width:3px;height:14px;margin-left:-1.5px;background:#ddd;border-radius:2px}
+.lab{font-size:7px;color:#999;text-align:center;letter-spacing:.5px}
+/* modules - updated flex proportions: cd slightly smaller, pa enlarged */
+#spec{flex:11}#amp{flex:13}#cdp{flex:17}#eq{flex:18}#cd{flex:16}#pa{flex:16}
+.mod::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px)}
+.mod:not(:last-child)::after{content:"";position:absolute;left:3%;width:94%;height:5px;bottom:-5px;background:linear-gradient(90deg,#aaa 0 5%,transparent 5% 95%,#aaa 95%);border-radius:0 0 3px 3px}
+.lcd::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(155deg,rgba(255,255,255,.1),transparent 40%)}
+.knob{background:repeating-conic-gradient(#0d0d0d 0 3deg,#303030 3deg 6deg)!important}
+.knob::before{content:"";position:absolute;inset:7px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555,#1a1a1a 75%)}
+.knob i{z-index:1}.cream{background:linear-gradient(#efe6bd,#c9bd8c);border:3px solid #111;box-shadow:inset 0 0 12px rgba(0,0,0,.4),0 0 10px rgba(255,220,140,.3)}
+.eqs{display:flex;justify-content:space-around;height:100%}
+.eqs div{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.eqs input{writing-mode:vertical-lr;direction:rtl;width:14px;flex:1;min-height:0;accent-color:#c22;cursor:pointer}
+#list{overflow:auto;font:9px "Courier New",monospace;color:#5df;padding:2px;height:100%}
+#list div{padding:1px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+#list div.cur{background:#0a3a5a;color:#fff}
+#list::-webkit-scrollbar{width:4px}
+.rack,.mod,.mod>div,$('disp'),#disp,#cd div{min-width:0}.mod{overflow:visible}.rack{overflow:hidden}
+#disp{overflow:hidden}#dName{overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#disp>div{min-width:0;max-width:100%}
+</style></head><body>
+<div class="rack off" id="rack">
+
+<div class="mod silver" id="spec"><span class="logo">Technics</span><span class="model">SPECTRUM ANALYZER SH-GE90</span>
+ <div class="lcd" style="flex:1;height:68%;margin-top:10px"><canvas id="cSpec"></canvas></div></div>
+
+<div class="mod" id="amp"><span class="logo">Technics</span><span class="model">STEREO INTEGRATED AMPLIFIER SU-VZ220</span>
+ <div style="display:flex;flex-direction:column;gap:4px;margin-top:10px;width:70px">
+  <button class="btn" id="pw" style="flex:none">POWER</button>
+  <div style="display:flex;gap:4px;align-items:center"><span class="led" id="lp"></span><span class="lab">ON</span></div></div>
+ <div style="flex:1;margin-top:10px;display:flex;flex-direction:column;gap:4px">
+  <div class="lcd" style="height:34px"><canvas id="cLR"></canvas></div>
+  <div style="display:flex;gap:4px"><button class="btn" id="btnDsp">DSP</button><button class="btn" id="mute">MUTE</button><button class="btn" id="loud">LOUD</button></div></div>
+ <div style="margin-top:8px;text-align:center"><div class="knob" id="knob"><i></i></div><div class="lab" id="vol">VOLUME</div></div></div>
+
+<div class="mod" id="cdp"><span class="logo">Technics</span><span class="model">COMPACT DISC PLAYER SL-PG300</span>
+ <div style="flex:1;min-width:0;height:100%;padding-top:11px;display:flex;flex-direction:column;gap:3px">
+  <div style="display:flex;gap:6px;flex:1;min-height:0">
+   <div class="lcd" style="width:55%;cursor:pointer" id="trayw" title="Click: Cargar MP3s"><canvas id="cTray"></canvas></div>
+   <div class="lcd cy" style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 6px">
+    <div style="display:flex;justify-content:space-around;font-size:10px;opacity:.8;font-weight:bold"><span>TRK</span><span>SEC</span></div>
+    <div style="display:flex;justify-content:space-around;align-items:center;font-size:26px;line-height:24px"><span id="rTr">-</span><span id="rTm">0:00</span><span id="rPl" style="font-size:18px"></span></div></div></div>
+  <div style="display:flex;gap:2px;flex:none" id="nums"></div>
+  <div style="display:flex;gap:3px;flex:none"><button class="btn" id="c2prev">⏮ SKIP</button><button class="btn" id="c2stop">■ STOP</button><button class="btn" id="c2pause">❚❚ PAUSE</button><button class="btn" id="c2play">▶ PLAY</button><button class="btn" id="c2next">SKIP ⏭</button><button class="btn" id="c2rnd">RANDOM</button><button class="btn" id="c2rep">REPEAT</button></div></div></div>
+
+<div class="mod" id="eq"><span class="logo">Technics</span><span class="model">STEREO GRAPHIC EQUALIZER SH-GE70</span>
+ <div style="flex:1;display:flex;flex-direction:column;height:100%;padding-top:10px;gap:3px">
+  <div class="lcd" style="flex:1;min-height:0;background:#1c1c1e"><canvas id="cEQ"></canvas></div>
+  <div style="display:flex;gap:4px"><button class="btn" data-p="flat">FLAT</button><button class="btn" data-p="rock">ROCK</button><button class="btn" data-p="pop">POP</button><button class="btn" data-p="bass">BASS</button><button class="btn" data-p="vocal">VOCAL</button><button class="btn" id="btnPersonal" data-p="personal">PERSONAL</button></div></div></div>
+
+<div class="mod" id="cd"><span class="logo">Technics</span><span class="model">COMPACT DISC PLAYER SL-PJ77</span>
+ <div style="display:flex;flex-direction:column;gap:4px;width:100%;height:100%;padding-top:10px">
+  <div style="display:flex;gap:6px;flex:1;min-height:0">
+   <div class="lcd" style="width:42%"><div id="list"></div></div>
+   <div class="lcd" style="flex:1;padding:4px 6px;display:flex;flex-direction:column;justify-content:space-between" id="disp">
+    <div class="cy" style="font-size:13px;display:flex;justify-content:space-between"><span id="dRnd">RANDOM</span><span id="dRep">REPEAT</span><span id="dPl">▶</span></div>
+    <div class="cy" style="font-size:24px;text-align:center" id="dTime">0:00</div>
+    <div class="cy" style="font-size:14px;display:flex;justify-content:space-between"><span id="dDate"></span><span id="dClock"></span></div>
+    <div class="cy" style="font-size:14px;display:flex;justify-content:space-between"><span id="dTr">TR --</span><span id="dTot">-- TRK</span></div>
+    <div class="cy" style="font-size:13px;white-space:nowrap;overflow:hidden" id="dName">NO DISC</div>
+    <div style="height:5px;background:#012;position:relative"><div id="prog" style="height:100%;width:0;background:#5df;box-shadow:0 0 6px #19f"></div></div></div>
+   <!-- Vertical DELETE button with letter stacking for top-to-bottom reading -->
+   <div style="display:flex;align-items:center;justify-content:center;width:26px;flex:none;">
+    <button class="btn" id="c2del" style="writing-mode:vertical-rl;text-orientation:upright;height:100%;width:26px;min-width:0;background:linear-gradient(180deg,#511,#200);color:#f88;border-color:#300;font-size:8px;letter-spacing:2px;padding:4px 0;line-height:10px;">DELETE</button>
+   </div>
+  </div></div>
+ <input type="file" id="file" accept="audio/*" multiple hidden></div>
+
+<div class="mod" id="pa"><span class="logo">Technics</span><span class="model">STEREO POWER AMPLIFIER SE-A900</span>
+ <div class="cream" style="flex:1;height:76%;margin-top:9px"><canvas id="cPA"></canvas></div>
+ <div class="lcd" style="width:30%;height:76%;margin-top:9px;background:#020a1c;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:4px 4px;color:#b9a77a;font:8px Arial;text-shadow:0 0 4px rgba(185,167,122,0.6)">
+  <div style="display:flex;justify-content:space-between;width:92%"><span>LEFT</span><span>RIGHT</span></div>
+  <b style="font-size:9px;letter-spacing:1px;color:#b9a77a">POWER LEVEL</b>
+  
+  <div style="display:flex;align-items:center;gap:4px;width:100%;justify-content:center">
+   <span style="font-size:7px;letter-spacing:0.5px;color:#b9a77a;font-weight:bold">COUNTER</span>
+   <div style="width:46px;height:18px"><canvas id="cCnt" style="cursor:pointer" title="Reset"></canvas></div>
+   <button class="btn" id="crs" style="height:16px;min-width:26px;font-size:7px;padding:0;line-height:14px;color:#ccc;background:linear-gradient(#333,#111);border:1px solid #000;border-radius:2px;cursor:pointer">reset</button>
+  </div>
+  
+  <span style="font-weight:bold;letter-spacing:1px;color:#b9a77a">ANGEL 2026</span>
+ </div>
+ <div class="cream" style="flex:1;height:76%;margin-top:9px"><canvas id="cPB"></canvas></div></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const audio=new Audio();let ctx,an,gain,filters=[],src,bassBoostFilter;
+let tracks=[],cur=-1,power=false,vol=0.6,muted=false,rnd=false,rep=false,loud=false,dsp=true;
+let currentPreset='personal';
+const FR=[31,63,125,250,500,1000,2000,3150,5000,8000,12500,16000,20000].slice(0,12),gains=FR.map(()=>0);
+let personalGains=[...gains];
+const PRE={flat:[0,0,0,0,0,0,0,0,0,0,0,0],rock:[5,4,2,-2,-3,-1,1,3,4,5,5,4],pop:[-2,-1,2,4,4,3,1,0,-1,-2,-2,-2],bass:[8,8,6,4,2,0,0,0,0,0,0,0],vocal:[-3,-3,-2,0,2,4,5,5,3,1,0,-1]};
+const cv={};['cSpec','cLR','cEQ','cTray','cPA','cPB','cCnt'].forEach(i=>cv[i]=$(i));
+function fit(){for(const k in cv){const c=cv[k],d=devicePixelRatio||1;c.width=c.clientWidth*d;c.height=c.clientHeight*d}}
+addEventListener('resize',fit);
+
+let db;
+function initDB() {
+ return new Promise((resolve, reject) => {
+  const req = indexedDB.open('TechnicsDB', 1);
+  req.onupgradeneeded = e => {
+   db = e.target.result;
+   if(!db.objectStoreNames.contains('tracks')) {
+    db.createObjectStore('tracks', {keyPath: 'id', autoIncrement: true});
+   }
+  };
+  req.onsuccess = e => {
+   db = e.target.result;
+   resolve(db);
+  };
+  req.onerror = e => reject(e.target.error);
+ });
+}
+
+function saveTrackToDB(file, name) {
+ return new Promise((resolve, reject) => {
+  if(!db) return resolve();
+  const tx = db.transaction('tracks', 'readwrite');
+  const store = tx.objectStore('tracks');
+  const req = store.add({file, name});
+  req.onsuccess = e => resolve(e.target.result);
+  req.onerror = e => reject(e.target.error);
+ });
+}
+
+function loadAllTracksFromDB() {
+ return new Promise((resolve, reject) => {
+  if(!db) return resolve([]);
+  const tx = db.transaction('tracks', 'readonly');
+  const store = tx.objectStore('tracks');
+  const req = store.getAll();
+  req.onsuccess = e => resolve(e.target.result);
+  req.onerror = e => reject(e.target.error);
+ });
+}
+
+function clearAllTracksFromDB() {
+ return new Promise((resolve, reject) => {
+  if(!db) return resolve();
+  const tx = db.transaction('tracks', 'readwrite');
+  const store = tx.objectStore('tracks');
+  const req = store.clear();
+  req.onsuccess = () => resolve();
+  req.onerror = e => reject(e.target.error);
+ });
+}
+
+function saveState() {
+ const state = {
+  power, vol, muted, rnd, rep, loud, dsp,
+  cur, currentPreset, gains, personalGains,
+  currentTime: audio.currentTime
+ };
+ localStorage.setItem('technics_state', JSON.stringify(state));
+}
+
+function restoreState() {
+ const raw = localStorage.getItem('technics_state');
+ if(!raw) return;
+ try {
+  const s = JSON.parse(raw);
+  if(s.vol !== undefined) vol = s.vol;
+  if(s.muted !== undefined) muted = s.muted;
+  if(s.rnd !== undefined) rnd = s.rnd;
+  if(s.rep !== undefined) rep = s.rep;
+  if(s.loud !== undefined) loud = s.loud;
+  if(s.dsp !== undefined) dsp = s.dsp;
+  if(s.currentPreset) currentPreset = s.currentPreset;
+  if(s.gains) { gains = s.gains; personalGains = s.personalGains || [...gains]; }
+  if(s.cur !== undefined) cur = s.cur;
+  
+  rotK();
+  setVol();
+  $('mute').classList.toggle('on', muted);
+  $('loud').classList.toggle('on', loud);
+  $('btnDsp').classList.toggle('on', dsp);
+  $('c2rnd').classList.toggle('on', rnd);
+  $('c2rep').classList.toggle('on', rep);
+  
+  document.querySelectorAll('[data-p]').forEach(x => {
+   x.classList.toggle('on', x.dataset.p === currentPreset);
+  });
+ } catch(e) { console.error(e); }
+}
+
+function init(){if(ctx)return;ctx=new (window.AudioContext||window.webkitAudioContext)();
+ src=ctx.createMediaElementSource(audio);let n=src;
+
+ bassBoostFilter=ctx.createBiquadFilter();
+ bassBoostFilter.type='lowshelf';
+ bassBoostFilter.frequency.value=120;
+ bassBoostFilter.gain.value=dsp ? 7.5 : 0;
+ n.connect(bassBoostFilter);
+ n=bassBoostFilter;
+
+ FR.forEach((f,i)=>{const b=ctx.createBiquadFilter();b.type='peaking';b.frequency.value=f;b.Q.value=1.6;b.gain.value=gains[i];n.connect(b);n=b;filters.push(b)});
+
+ gain=ctx.createGain();an=ctx.createAnalyser();an.fftSize=512;an.smoothingTimeConstant=.7;
+ n.connect(gain);gain.connect(an);an.connect(ctx.destination);setVol()}
+
+function setDsp(){
+ if(!bassBoostFilter)return;
+ bassBoostFilter.gain.value = dsp ? 7.5 : 0;
+ saveState();
+}
+
+function setVol(){
+ audio.volume=1;
+ if(gain) gain.gain.value=(power&&!muted)?Math.pow(vol,2)*(loud?1.3:1):0;
+ $('vol').textContent='VOL '+Math.round(vol*40);
+ saveState();
+}
+
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{
+ if(!power)return;
+ document.querySelectorAll('[data-p]').forEach(x=>x.classList.toggle('on',x===b));
+ currentPreset = b.dataset.p;
+ if(currentPreset === 'personal') {
+  personalGains.forEach((g,i)=>{gains[i]=g;if(filters[i])filters[i].gain.value=g});
+ } else if(PRE[currentPreset]) {
+  PRE[currentPreset].forEach((g,i)=>{gains[i]=g;if(filters[i])filters[i].gain.value=g});
+ }
+ saveState();
+});
+
+const kn=$('knob');function rotK(){kn.style.transform=`rotate(${-135+vol*270}deg)`}rotK();
+kn.onpointerdown=e=>{if(!power)return;kn.setPointerCapture(e.pointerId);let y=e.clientY,v=vol;
+ kn.onpointermove=m=>{vol=Math.max(0,Math.min(1,v+(y-m.clientY)/150));rotK();setVol()};
+ kn.onpointerup=()=>kn.onpointermove=null};
+kn.onwheel=e=>{if(!power)return;vol=Math.max(0,Math.min(1,vol-e.deltaY/1500));rotK();setVol()};
+
+$('pw').onclick=()=>{
+ power=!power;
+ $('rack').classList.toggle('off',!power);$('lp').classList.toggle('on',power);
+ if(power){
+  $('btnPersonal').classList.add('on');
+  if(!document.querySelector('[data-p].on')) {
+   $('btnPersonal').classList.add('on');
+  }
+  $('btnDsp').classList.toggle('on', dsp);
+  init();
+  if(ctx&&ctx.state==='suspended')ctx.resume();
+  setDsp();
+  if(tracks.length && cur >= 0 && !audio.src) {
+   load(cur, false);
+  }
+ } else {
+  audio.pause();
+  setDsp();
+ }
+ setVol();
+ saveState();
+};
+
+$('btnDsp').onclick=e=>{
+ if(!power)return;
+ dsp=!dsp;
+ e.target.classList.toggle('on', dsp);
+ setDsp();
+};
+
+$('mute').onclick=e=>{if(!power)return;muted=!muted;e.target.classList.toggle('on',muted);setVol()};
+$('loud').onclick=e=>{if(!power)return;loud=!loud;e.target.classList.toggle('on',loud);setVol()};
+
+$('file').onchange=async e=>{
+ if(!power)return;
+ tray.t=0;
+ const fs=[...e.target.files];
+ if(!fs.length) return;
+ const startIndex = tracks.length;
+ for(const f of fs) {
+  const name = f.name.replace(/\.[^.]+$/,'');
+  const dbId = await saveTrackToDB(f, name);
+  tracks.push({id: dbId, name: name, url: URL.createObjectURL(f)});
+ }
+ renderList();
+ if(cur < 0) load(startIndex, true);
+ e.target.value='';
+ saveState();
+};
+
+// VERTICAL DELETE BUTTON HANDLER
+$('c2del').onclick = async () => {
+ if(!power) return;
+ audio.pause();
+ audio.src = '';
+ tracks = [];
+ cur = -1;
+ cntVal = 0;
+ 
+ try {
+  await clearAllTracksFromDB();
+ } catch(err) {
+  console.error("Error clearing DB:", err);
+ }
+ 
+ renderList();
+ $('rTr').textContent = '-';
+ $('dTr').textContent = 'TR --';
+ $('dName').textContent = 'NO DISC';
+ $('dTot').textContent = '0 TRK';
+ saveState();
+};
+
+function renderList(){
+ $('list').innerHTML=tracks.map((t,i)=>`<div data-i="${i}" class="${i==cur?'cur':''}">${String(i+1).padStart(2,'0')} ${t.name}</div>`).join('');
+ $('dTot').textContent=tracks.length+' TRK';
+}
+
+$('list').onclick=e=>{if(!power)return;const i=e.target.dataset.i;if(i!=null)load(+i,true)};
+
+function load(i,go){
+ cntVal=0;
+ if(!tracks[i])return;
+ cur=i;
+ audio.src=tracks[i].url;
+ init();
+ $('rTr').textContent=String(i+1).padStart(2,'0');
+ $('dTr').textContent='TR '+String(i+1).padStart(2,'0');
+ $('dName').textContent=tracks[i].name.toUpperCase();
+ renderList();
+ const c=$('list').querySelector('.cur');
+ if(c)c.scrollIntoView({block:'nearest'});
+ if(go) play();
+ saveState();
+}
+
+function play(){
+ if(!power||!tracks.length)return;
+ init();
+ if(ctx&&ctx.state==='suspended')ctx.resume();
+ if(cur<0)load(0,false);
+ audio.play();
+}
+
+function nextIdx(d){
+ const n=tracks.length;
+ if(!n)return -1;
+ if(rnd&&n>1){let j;do{j=Math.floor(Math.random()*n)}while(j==cur);return j}
+ return (cur+d+n)%n;
+}
+
+audio.onended=()=>{
+ if(rep&&!rnd&&tracks.length==1)return play();
+ if(!rnd&&!rep&&cur==tracks.length-1)return;
+ load(nextIdx(1),true);
+};
+
+const fmt=t=>{t=t|0;return (t/60|0)+':'+String(t%60).padStart(2,'0')};
+
+function bars(c,vals,rows,col,peaks){const x=c.getContext('2d'),W=c.width,H=c.height,n=vals.length,cw=W/n,rh=H/rows;
+ x.clearRect(0,0,W,H);
+ for(let i=0;i<n;i++){const lit=Math.round(vals[i]*rows);
+  for(let r=0;r<rows;r++){const on=r<lit;const y=H-(r+1)*rh;
+   x.fillStyle=on?(r>rows*.8?'#fff':col):'#06141f';x.shadowColor=col;x.shadowBlur=on?6:0;
+   x.fillRect(i*cw+cw*.14,y+rh*.15,cw*.72,rh*.7)}
+  if(peaks){const p=Math.round(peaks[i]*rows);if(p>0){x.fillStyle='#fff';x.fillRect(i*cw+cw*.14,H-p*rh+rh*.15,cw*.72,rh*.7)}}}}
+
+function meter(c,v,ch){const x=c.getContext('2d'),W=c.width,H=c.height;
+ const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#e6e1b0');g.addColorStop(1,'#bdb580');x.fillStyle=g;x.fillRect(0,0,W,H);
+ const cx=W/2,cy=H*1.3,r=H*1.05,a0=-2.2,a1=-.94,L=['0','.01','.1','1','10','100'];
+ x.textAlign='center';x.lineWidth=1;x.font=H*.10+'px Arial';
+ L.forEach((t,i)=>{const a=a0+(a1-a0)*i/5,c0=Math.cos(a),s0=Math.sin(a),col=i>=4?'#b22':'#222';x.strokeStyle=col;x.fillStyle=col;
+  x.beginPath();x.moveTo(cx+c0*r*.9,cy+s0*r*.9);x.lineTo(cx+c0*r*.97,cy+s0*r*.97);x.stroke();x.fillText(t,cx+c0*r*.82,cy+s0*r*.82+2)});
+ x.fillStyle='#333';x.font=H*.11+'px Arial';x.fillText('WATTS/8\u03A9',cx,H*.92);x.fillText(ch?'R':'L',W*.07,H*.92);
+ const a=a0+(a1-a0)*Math.min(1,v*1.3);x.strokeStyle='#111';x.lineWidth=2;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.cos(a)*r*.95,cy+Math.sin(a)*r*.95);x.stroke()}
+
+function drawCounter(c){const x=c.getContext('2d'),W=c.width,H=c.height,k=Math.min(W/80,H/30);
+ x.clearRect(0,0,W,H);x.save();x.translate((W-80*k)/2,(H-30*k)/2);x.scale(k,k);
+ x.fillStyle='#070707';x.beginPath();x.roundRect(0,0,80,30,3);x.fill();
+ const v=cntVal,f=v%1,u=Math.floor(v)%10,t=Math.floor(v/10)%10,h=Math.floor(v/100)%10,roll=[u==9&&t==9?f:0,u==9?f:0,f];
+ [h,t,u].forEach((d,i)=>{const X=4+i*24,Y=3,w=22,ht=24,r=roll[i];x.save();x.beginPath();x.rect(X,Y,w,ht);x.clip();
+  x.fillStyle='#ecece6';x.fillRect(X,Y,w,ht);x.fillStyle='#111';x.font='bold 20px Arial';x.textAlign='center';
+  x.fillText(d,X+w/2,Y+19-r*ht);x.fillText((d+1)%10,X+w/2,Y+19+ht-r*ht);
+  const g=x.createLinearGradient(0,Y,0,Y+ht);g.addColorStop(0,'rgba(0,0,0,.55)');g.addColorStop(.3,'rgba(0,0,0,0)');g.addColorStop(.7,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');
+  x.fillStyle=g;x.fillRect(X,Y,w,ht);x.restore()});
+ x.restore()}
+
+function drawFad(c){const x=c.getContext('2d'),W=c.width,H=c.height,d=devicePixelRatio||1,L=W*.07,R=W*.98,T=H*.1,B=H*.76,n=FR.length,cw=(R-L)/n;
+ x.fillStyle='#1c1c1e';x.fillRect(0,0,W,H);const gy=g=>T+(12-g)/24*(B-T);
+ x.font=H*.1+'px Arial';x.textAlign='right';x.fillStyle='#888';[12,6,0,-6,-12].forEach(g=>x.fillText((g>0?'+':'')+g,L-4*d,gy(g)+3*d));
+ for(let i=0;i<n;i++){const cx=L+(i+.5)*cw;x.fillStyle='#000';x.fillRect(cx-2*d,T-4*d,4*d,B-T+8*d);
+  x.strokeStyle='#666';x.lineWidth=1;for(let g=-12;g<=12;g+=3){const y=gy(g),w=(g%6?3:6)*d;x.beginPath();x.moveTo(cx-6*d-w,y);x.lineTo(cx-6*d,y);x.moveTo(cx+6*d,y);x.lineTo(cx+6*d+w,y);x.stroke()}
+  x.fillStyle='#8a8a8a';x.textAlign='center';x.font=H*.085+'px Arial';x.fillText(FR[i]>=1000?FR[i]/1000+'k':FR[i],cx,H*.95)}
+ x.strokeStyle='#d22';x.shadowColor='#f33';x.shadowBlur=5*d;x.lineWidth=1.5*d;x.beginPath();x.moveTo(L-2*d,gy(0));x.lineTo(R,gy(0));x.stroke();x.shadowBlur=0;
+ for(let i=0;i<n;i++){const cx=L+(i+.5)*cw,y=gy(gains[i]),w=Math.min(cw*.62,18*d),h=H*.17;
+  const g=x.createLinearGradient(0,y-h/2,0,y+h/2);g.addColorStop(0,'#666');g.addColorStop(.12,'#222');g.addColorStop(.5,'#0b0b0b');g.addColorStop(1,'#000');
+  x.fillStyle=g;x.beginPath();x.roundRect(cx-w/2,y-h/2,w,h,2*d);x.fill();x.strokeStyle='#555';x.lineWidth=1;x.stroke();
+  x.fillStyle='#f22';x.shadowColor='#f22';x.shadowBlur=8*d;x.beginPath();x.arc(cx,y,2.3*d,0,7);x.fill();x.shadowBlur=0}}
+
+const tray={o:0,t:0};
+function drawTray(c,o){const x=c.getContext('2d'),W=c.width,H=c.height;x.fillStyle='#060606';x.fillRect(0,0,W,H);
+ x.fillStyle='#16161a';x.fillRect(W*.04,H*.1,W*.92,H*.8);
+ const g0=x.createRadialGradient(W/2,H*.5,2,W/2,H*.5,H*.38);g0.addColorStop(0,'#eee');g0.addColorStop(.35,'#9fb0c8');g0.addColorStop(.7,'#c9a0c8');g0.addColorStop(1,'#778');
+ x.fillStyle=g0;x.beginPath();x.arc(W/2,H*.5,H*.38,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(W/2,H*.5,H*.07,0,7);x.fill();
+ const dy=o*H*.62;x.save();x.beginPath();x.rect(0,dy,W,H);x.clip();
+ const g=x.createLinearGradient(0,dy,0,dy+H);g.addColorStop(0,'#3a3a40');g.addColorStop(.35,'#111');g.addColorStop(1,'#000');x.fillStyle=g;x.fillRect(0,dy,W,H);
+ x.fillStyle='rgba(255,255,255,.1)';x.beginPath();x.moveTo(W*.15,dy);x.lineTo(W*.5,dy);x.lineTo(W*.3,dy+H);x.lineTo(0,dy+H);x.fill();
+ x.fillStyle='#b9a77a';x.font='bold '+H*.2+'px Georgia';x.textAlign='center';x.fillText('MASH OPEN',W/2,dy+H*.62);x.restore();
+ x.fillStyle='#777';x.fillRect(0,dy,W,1.5)}
+
+let cntVal=0;const N=32,sv=new Array(N).fill(0),pk=new Array(N).fill(0),lr=[0,0];
+const fd=new Uint8Array(256),td=new Uint8Array(512);
+
+function frame(){requestAnimationFrame(frame);
+ const playing=an&&!audio.paused&&power;
+ if(playing){an.getByteFrequencyData(fd);an.getByteTimeDomainData(td)}
+ for(let i=0;i<N;i++){let v=0;if(playing){const a=Math.floor(Math.pow(i/N,1.8)*120)+1,b=Math.floor(Math.pow((i+1)/N,1.8)*120)+2;
+  let m=0;for(let k=a;k<=b;k++)m=Math.max(m,fd[k]);v=Math.pow(m/255,1.6)*(0.8+i/N*.5)}
+  sv[i]=Math.max(v,sv[i]-.04);pk[i]=Math.max(sv[i],pk[i]-.012)}
+ let rms=0;if(playing){for(let i=0;i<512;i++){const s=(td[i]-128)/128;rms+=s*s}rms=Math.sqrt(rms/512)*2.2}
+ lr[0]=Math.max(rms*(.9+Math.random()*.2),lr[0]-.05);lr[1]=Math.max(rms*(.9+Math.random()*.2),lr[1]-.05);
+ bars(cv.cSpec,sv,16,'#4cf',pk);
+
+ const c=cv.cLR,x=c.getContext('2d'),W=c.width,H=c.height;x.clearRect(0,0,W,H);
+ [0,1].forEach(ch=>{const n=24,cw=W/n;for(let i=0;i<n;i++){const on=i<Math.min(1,lr[ch])*n;
+  x.fillStyle=on?(i>n*.8?'#f44':'#4cf'):'#06141f';x.shadowColor='#4cf';x.shadowBlur=on?5:0;x.fillRect(i*cw+1,ch*H/2+H*.1,cw-2,H*.3)}});
+ x.shadowBlur=0;
+ drawFad(cv.cEQ);
+
+ const stp=power && (audio.paused && (audio.currentTime<.05 || audio.ended || !audio.src)), pau=power && audio.paused && !stp;
+ if(playing)cntVal=(cntVal+.017)%1000;drawCounter(cv.cCnt);
+ tray.o+=(tray.t-tray.o)*.15;drawTray(cv.cTray,tray.o);
+ $('rTr').textContent=cur>=0?cur+1:'-';$('rTm').textContent=fmt(audio.currentTime);
+ 
+ $('rPl').textContent=playing?'▶':(pau?'❚❚':'');
+ document.querySelectorAll('#nums .btn').forEach((b,i)=>b.classList.toggle('on',i===cur));
+
+ $('c2play').classList.toggle('on', playing);
+ $('c2pause').classList.toggle('on', pau);
+ $('c2stop').classList.toggle('on', stp);
+ $('c2rnd').classList.toggle('on', rnd);
+ $('c2rep').classList.toggle('on', rep);
+
+ meter(cv.cPA,lr[0],0);meter(cv.cPB,lr[1],1);
+
+ $('dPl').textContent=playing?'▶':(audio.paused&&audio.currentTime>0?'❚❚':'■');
+ $('dTime').textContent=audio.src&&tracks.length?fmt(audio.currentTime):'0:00';
+ $('prog').style.width=(audio.duration?audio.currentTime/audio.duration*100:0)+'%';
+ $('dRnd').style.opacity=rnd?1:.15;$('dRep').style.opacity=rep?1:.15}
+
+$('c2play').onclick=()=> { if(power) play(); };
+$('c2pause').onclick=()=> { if(power) audio.pause(); };
+$('c2stop').onclick=()=> { if(power) { audio.pause(); audio.currentTime=0; } };
+$('c2rnd').onclick=e=>{if(power){rnd=!rnd;e.target.classList.toggle('on',rnd);saveState();}};
+$('c2rep').onclick=e=>{if(power){rep=!rep;e.target.classList.toggle('on',rep);saveState();}};
+
+let pressTimer = null;
+let seekInterval = null;
+
+function startHolding(dir) {
+ if(!power || !tracks.length) return;
+ pressTimer = setTimeout(() => {
+  seekInterval = setInterval(() => {
+   audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + (dir * 2)));
+  }, 150);
+ }, 400);
+}
+
+const btnNext = $('c2next');
+const btnPrev = $('c2prev');
+
+btnNext.onmousedown = () => startHolding(1);
+btnNext.onmouseup = (e) => {
+ clearTimeout(pressTimer);
+ if(seekInterval) {
+  clearInterval(seekInterval);
+  seekInterval = null;
+ } else {
+  load(nextIdx(1), true);
+ }
+};
+
+btnPrev.onmousedown = () => startHolding(-1);
+btnPrev.onmouseup = (e) => {
+ clearTimeout(pressTimer);
+ if(seekInterval) {
+  clearInterval(seekInterval);
+  seekInterval = null;
+ } else {
+  if(audio.currentTime > 3) audio.currentTime = 0;
+  else load(nextIdx(-1), true);
+ }
+};
+
+for(let i=1;i<=10;i++){const b=document.createElement('button');b.className='btn';b.textContent=i;b.style.cssText='height:14px;min-width:0;font-size:8px';b.onclick=()=>{if(power&&tracks[i-1])load(i-1,true)};$('nums').appendChild(b)}
+
+$('trayw').onclick=()=>{
+ if(!power)return;
+ tray.t=tray.t?0:1;
+ $('file').click();
+};
+
+cv.cCnt.onclick=$('crs').onclick=()=>{if(power)cntVal=0;};
+
+(()=>{const c=cv.cEQ;let band=-1;c.style.touchAction='none';
+ const geo=e=>{const r=c.getBoundingClientRect(),k=c.width/r.width,W=c.width,H=c.height,L=W*.07,R=W*.98,T=H*.1,B=H*.76;
+  return{b:Math.max(0,Math.min(FR.length-1,Math.floor(((e.clientX-r.left)*k-L)/((R-L)/FR.length)))),g:Math.max(-12,Math.min(12,Math.round(12-((e.clientY-r.top)*k-T)/(B-T)*24)))}};
+ const put=(b,g)=>{
+  if(!power)return;
+  gains[b]=g;
+  personalGains[b]=g;
+  if(filters[b])filters[b].gain.value=g;
+  currentPreset='personal';
+  document.querySelectorAll('[data-p]').forEach(x=>x.classList.toggle('on', x.dataset.p==='personal'));
+  saveState();
+ };
+ c.onpointerdown=e=>{if(!power)return;c.setPointerCapture(e.pointerId);const o=geo(e);band=o.b;put(band,o.g)};
+ c.onpointermove=e=>{if(!power||band<0||!e.buttons)return;put(band,geo(e).g)};c.onpointerup=()=>band=-1;
+ c.ondblclick=e=>{if(power)put(geo(e).b,0)};})();
+
+const tick=()=>{const d=new Date();$('dDate').textContent=d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});$('dClock').textContent=d.toLocaleTimeString('es-AR',{hour12:false})};
+tick();setInterval(tick,1000);fit();frame();
+
+window.addEventListener('DOMContentLoaded', async () => {
+ try {
+  await initDB();
+  const dbTracks = await loadAllTracksFromDB();
+  if(dbTracks && dbTracks.length > 0) {
+   tracks = dbTracks.map(t => ({
+    id: t.id,
+    name: t.name,
+    url: URL.createObjectURL(t.file)
+   }));
+   renderList();
+  }
+ } catch(err) { console.error("DB Load Error:", err); }
+
+ restoreState();
+});
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body></html>
